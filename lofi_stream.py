@@ -43,88 +43,51 @@ stream_info["stream_key"] = stream_key
 with open(config_file, "w") as f:
     json.dump(stream_info, f)
 
-# Get a random audio file from the folder
-def get_random_audio_file():
-    audio_files = os.listdir(audio_folder)
-    return os.path.join(audio_folder, random.choice(audio_files))
-
-
-# Get the duration of an audio file using FFmpeg
-def get_audio_duration(audio_file):
-    result = subprocess.run(
-        [
-            "ffprobe",
-            "-v",
-            "error",
-            "-show_entries",
-            "format=duration",
-            "-of",
-            "default=noprint_wrappers=1:nokey=1",
-            audio_file,
-        ],
-        capture_output=True,
-        text=True,
-    )
-    duration = float(result.stdout)
-    return duration
-
+# Get a list of audio files from the folder
+audio_files = [os.path.join(audio_folder, file) for file in os.listdir(audio_folder) if file.endswith(".mp3")]
 
 # Start the streaming process
 def start_streaming(audio_file):
-    # Create a subprocess object for FFmpeg
-    ffmpeg_process = subprocess.Popen(
-        [
-            "ffmpeg",
-            "-re",
-            "-ignore_loop",
-            "0",
-            "-i",
-            background_image,
-            "-i",
-            audio_file,
-            "-c:v",
-            "libx264",
-            "-tune",
-            "stillimage",
-            "-c:a",
-            "aac",
-            "-pix_fmt",
-            "yuv420p",
-            "-g",
-            "60",
-            "-f",
-            "flv",
-            stream_url + "/" + stream_key,
-        ],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )  # Suppress FFmpeg output
+    while True:
+        # Create a subprocess object for FFmpeg
+        ffmpeg_process = subprocess.Popen(
+            [
+                "ffmpeg",
+                "-re",
+                "-i",
+                background_image,
+                "-stream_loop",
+                "-1",  # Loop indefinitely
+                "-i",
+                audio_file,
+                "-c:v",
+                "libx264",
+                "-tune",
+                "stillimage",
+                "-c:a",
+                "aac",
+                "-pix_fmt",
+                "yuv420p",
+                "-g",
+                "60",
+                "-f",
+                "flv",
+                stream_url + "/" + stream_key,
+            ],
+            stdin=subprocess.PIPE,  # Close stdin
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )  # Suppress FFmpeg output
 
-    # Get the duration of the audio track
-    audio_duration = get_audio_duration(audio_file)
+        # Wait for the FFmpeg process to complete
+        ffmpeg_process.wait()
 
-    # Sleep for the duration of the audio track
-    time.sleep(audio_duration)
-
-    # Terminate the FFmpeg process
-    ffmpeg_process.terminate()
-    ffmpeg_process.wait()  # Wait for the process to finish
-
-
-# Select audio files and start streaming
+# Select audio files and start streaming in a loop
 def audio_track_selection():
     while True:
-        current_audio_file = get_random_audio_file()
-
-        # Start the streaming process in a separate thread
-        streaming_thread = threading.Thread(
-            target=start_streaming, args=(current_audio_file,)
-        )
-        streaming_thread.start()
-
-        # Sleep for a short time before starting the next track
-        time.sleep(5)  # Adjust as needed
-
+        for audio_file in audio_files:
+            start_streaming(audio_file)
+            time.sleep(5)  # Adjust as needed
 
 # Main program loop
 def main():
@@ -152,7 +115,6 @@ def main():
 
     # Stop the audio track selection thread
     audio_track_thread.join()
-
 
 # Run the main program
 if __name__ == "__main__":

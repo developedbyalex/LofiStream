@@ -16,6 +16,7 @@ def get_random_audio_file():
     audio_files = os.listdir(audio_folder)
     return os.path.join(audio_folder, random.choice(audio_files))
 
+
 # Start the streaming process
 def start_streaming(audio_file):
     # Run FFmpeg subprocess to handle the video streaming with the provided audio file
@@ -25,6 +26,7 @@ def start_streaming(audio_file):
         '-ignore_loop', '0',  # Add this option to respect the GIF loop count
         '-i', background_image,
         '-i', audio_file,
+        '-shortest',
         '-c:v', 'libx264',
         '-tune', 'stillimage',
         '-c:a', 'aac',
@@ -32,6 +34,7 @@ def start_streaming(audio_file):
         '-f', 'flv',
         stream_url + '/' + stream_key
     ])
+
 
 # Select audio files and start streaming
 def audio_track_selection():
@@ -44,6 +47,7 @@ def audio_track_selection():
 
         # Wait for the streaming thread to finish
         streaming_thread.join()
+
 
 # Main program loop
 def main():
@@ -60,6 +64,7 @@ def main():
 
     # Stop the audio track selection thread
     audio_track_thread.join()
+
 
 # Run the main program
 if __name__ == '__main__':
